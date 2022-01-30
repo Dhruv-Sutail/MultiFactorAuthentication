@@ -1,3 +1,8 @@
+{% load static %}
+<title>{{user}}'s Profile</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+<link rel="stylesheet" href="{% static 'all.css' %}" />
+<h3 class="text-success">{{success}}</h3>
 <form method="POST" action="{% url 'logout' %}">
     {% csrf_token %}
     <button>{{user}}</button>

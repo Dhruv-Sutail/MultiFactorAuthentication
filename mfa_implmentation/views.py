@@ -6,8 +6,66 @@ from django.urls import reverse
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.hashers import make_password
 from .models import UserInformation
+import boto3
+import random
+import string
+
+queue_url = 'https://sqs.ap-south-1.amazonaws.com/499607506705/MFA_AccountNumber'
+
+def getAuthenticateEmail(email):
+	sqs = boto3.client('sqs',region_name='ap-south-1')
+	
+	# Send message to SQS queue
+	response = sqs.send_message(
+		QueueUrl=queue_url,
+		DelaySeconds=10,
+		MessageAttributes={
+			'email': {
+				'DataType': 'String',
+				'StringValue': email
+			},
+			'is_secret': {
+				'DataType': 'String',
+				'StringValue': "no"
+			}					
+		},
+		MessageBody=(
+			'sgnons'
+		)
+	)
+	print("\n\n\n\n\n")
+	print(response['MessageId'])
 
 
+def callSQS(Secret,email):
+	sqs = boto3.client('sqs',region_name='ap-south-1')
+
+	response = sqs.send_message(
+		QueueUrl=queue_url,
+		DelaySeconds=10,
+		MessageAttributes={
+			'Secret': {
+				'DataType': 'String',
+				'StringValue': Secret
+			},
+			'email': {
+				'DataType': 'String',
+				'StringValue': email
+			},
+			'is_secret': {
+				'DataType': 'String',
+				'StringValue': "yes"
+			}		
+		},
+		MessageBody=(
+			'sgnons'
+		)
+	)
+
+	print(response['MessageId'])
+
+def GetSecret():
+	return ''.join(random.choices(string.ascii_uppercase + string.digits, k = 11))
 
 class HomeView(View):
     def get(self , request):
@@ -31,7 +89,8 @@ class RegisterView(View):
                     password = make_password(password)
                 )
                 userprofile.save()
-                context["success"] = "You have Registered Successfully! Please Login Now:)"
+                getAuthenticateEmail(email)
+                context["success"] = "You have Registered Successfully! Please Check Your Email for Authentication:)"
                 return render(request, "Register.html",context)
             else:
                 context["error"] = "Please Enter Same password and Confirm password!!"
@@ -49,7 +108,6 @@ class LoginView(View):
         if request.method == "POST":
             username = request.POST['username']
             password = request.POST['password']
-            print(username)
             user = authenticate(request,username=username,password=password)
             if user:
                 login(request,user)
@@ -69,9 +127,12 @@ class LoginSuccessView(View):
             return render(request , "PersonalQuestions.html")
     
     def post(self,request):
+        context = {}
         if request.method == "POST":
             user = request.user
-            Account = 12345678901
+            print(user)
+            Account = GetSecret()
+            email = User.objects.filter(username=user).values_list('email', flat=True)[0]
             dish = request.POST['dish']
             middlename = request.POST['middlename']
             city = request.POST['city']
@@ -83,6 +144,8 @@ class LoginSuccessView(View):
                 city = city 
             )
             userdetails.save()
+            callSQS(Account,email)
+            context["success"] = "Please Verify Your Account Number with the Email also!"
             return HttpResponseRedirect(reverse("profile"))
 
 class LogoutView(View):
