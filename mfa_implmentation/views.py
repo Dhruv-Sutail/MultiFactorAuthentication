@@ -120,9 +120,10 @@ class LoginView(View):
 class LoginSuccessView(View):
     def get(self , request):
         name = request.user
-        if UserInformation.objects.filter(username=name).exists():
-            print(name)
-            return render(request , "Profile.html")
+        context = {}
+        if UserInformation.objects.filter(username=name).exists(): 
+            context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+            return render(request , "Profile.html",context)
         else:
             return render(request , "PersonalQuestions.html")
     

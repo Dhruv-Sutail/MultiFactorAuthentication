@@ -72,23 +72,20 @@ let allCharacters = [
 ];
 function getCaptcha() {
   for (let i = 0; i < 6; i++) {
-    //getting 6 random characters from the array
     let randomCharacter =
       allCharacters[Math.floor(Math.random() * allCharacters.length)];
-    captcha.innerText += ` ${randomCharacter}`; //passing 6 random characters inside captcha innerText
+    captcha.innerText += ` ${randomCharacter}`; 
   }
 }
-getCaptcha(); //calling getCaptcha when the page open
-//calling getCaptcha & removeContent on the reload btn click
+getCaptcha(); 
 reloadBtn.addEventListener("click", () => {
   removeContent();
   getCaptcha();
 });
 
 checkBtn.addEventListener("click", (e) => {
-  e.preventDefault(); //preventing button from it's default behaviour
+  e.preventDefault(); 
   statusTxt.style.display = "block";
-  //adding space after each character of user entered values because I've added spaces while generating captcha
   let inputVal = inputField.value.split("").join(" ");
   if (inputVal == captcha.innerText) {
     statusTxt.style.color = "#4db2ec";
