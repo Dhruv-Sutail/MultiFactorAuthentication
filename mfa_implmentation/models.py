@@ -8,3 +8,8 @@ class UserInformation(models.Model):
     favourite_dish = models.CharField(max_length=200)
     middle_name = models.CharField(max_length=200)
     city = models.CharField(max_length=200)
+
+class UserAccountBalance(models.Model):
+    username = models.ForeignKey(User, on_delete=models.SET_NULL,null=True, related_name="userName")
+    accountNumber = models.ForeignKey(UserInformation, on_delete=models.SET_NULL,null=True,related_name="accountnumber")
+    balance = models.CharField(max_length=12)

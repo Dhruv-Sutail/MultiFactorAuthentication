@@ -5,12 +5,19 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.hashers import make_password
-from .models import UserInformation
+from .models import UserInformation,UserAccountBalance
 import boto3
 import random
 import string
+import requests
+from datetime import date,timedelta
+
+today = date.today()
+yesterday = today - timedelta(days = 2)
 
 queue_url = 'https://sqs.ap-south-1.amazonaws.com/499607506705/MFA_AccountNumber'
+stock_url = ['https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=RELIANCE.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TATACHEM.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=ADANIENT.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=ONGC.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TITAN.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K']
+crypto_url = ['https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=BTC&market=USD&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=ETH&market=USD&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=THETA&market=USD&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=DOT&market=USD&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=BNB&market=USD&apikey=BVL5MGAAMSINNX3K']
 
 def getAuthenticateEmail(email):
 	sqs = boto3.client('sqs',region_name='ap-south-1')
@@ -123,10 +130,13 @@ class LoginSuccessView(View):
         context = {}
         if UserInformation.objects.filter(username=name).exists(): 
             context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
-            return render(request , "Profile.html",context)
+            context["date"] = today.strftime("%b %d %Y")
+            if UserAccountBalance.objects.filter(username=name).exists():
+                context["accountbalance"] = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+                return render(request , "Profile.html",context)
         else:
             return render(request , "PersonalQuestions.html")
-    
+
     def post(self,request):
         context = {}
         if request.method == "POST":
@@ -148,6 +158,80 @@ class LoginSuccessView(View):
             callSQS(Account,email)
             context["success"] = "Please Verify Your Account Number with the Email also!"
             return HttpResponseRedirect(reverse("profile"))
+
+class FixedDepositView(View):
+    def get(self , request):
+        context = {}
+        name = request.user
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        context["date"] = today.strftime("%b %d %Y")
+        return render(request,"FixedDeposit.html",context)
+
+class AddMoneyView(View):
+    def get(self,request):
+        context = {}
+        name = request.user
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        context["date"] = today.strftime("%b %d %Y")
+        if UserAccountBalance.objects.filter(username=name).exists():
+            context["accountbalance"] = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+        return render(request,"AddMoney.html",context)
+    
+    def post(self,request):
+        name = request.user
+        if UserAccountBalance.objects.filter(username=name).exists():
+            oldbalance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+            balance = request.POST['amount']
+            newbalance = int(oldbalance) + int(balance)
+            print(newbalance)
+            totalbalance = UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
+            return HttpResponseRedirect(reverse("addmoney"))
+        else:
+            if request.method == "POST":
+                accountNumber = request.POST['accountnumber']
+                Accountnumber = UserInformation.objects.get(accountNumber=accountNumber)
+                balance = request.POST['amount']
+                userbalance = UserAccountBalance(
+                    username = name,
+                    accountNumber = Accountnumber,
+                    balance = balance,
+                )
+                userbalance.save()
+                return HttpResponseRedirect(reverse("addmoney"))
+
+class StocksView(View):
+    def get(self , request):
+        context = {}
+        name = request.user
+        stock = []
+        price = []
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        for i in range(len(stock_url)):
+            r = requests.get(stock_url[i])
+            data = r.json()
+            stock.append(data['Meta Data']['2. Symbol'])
+            price.append(data["Time Series (Daily)"][str(yesterday)]["4. close"])
+        context["stock"] = stock
+        context["price"] = price   
+        context["date"] = today.strftime("%b %d %Y")
+        return render(request,"Stocks.html",context)
+
+class CryptoCurrencyView(View):
+    def get(self , request):
+        context = {}
+        name = request.user
+        crypto = []
+        price = []
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        for i in range(len(crypto_url)):
+            r = requests.get(crypto_url[i])
+            data = r.json()
+            crypto.append(data['Meta Data']['3. Digital Currency Name'])
+            price.append(int(float(data['Time Series (Digital Currency Daily)'][str(yesterday)]["4b. close (USD)"]))*75.08)
+        context["crypto"] = crypto
+        context["price"] = price
+        context["date"] = today.strftime("%b %d %Y")
+        return render(request,"CryptoCurrency.html",context)
 
 class LogoutView(View):
     def post(self, request):

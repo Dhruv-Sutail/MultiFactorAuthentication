@@ -8,6 +8,7 @@ django = "*"
 django-simple-captcha = "*"
 testfixtures = "*"
 boto3 = "*"
+requests = "*"
 
 [dev-packages]
 
