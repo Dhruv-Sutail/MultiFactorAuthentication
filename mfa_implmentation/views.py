@@ -5,15 +5,16 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.hashers import make_password
-from .models import UserInformation,UserAccountBalance
+from .models import UserInformation,UserAccountBalance,UserMfaSecret
 import boto3
 import random
 import string
 import requests
 from datetime import date,timedelta
+import pyotp
 
 today = date.today()
-yesterday = today - timedelta(days = 2)
+yesterday = today - timedelta(days = 3)
 
 queue_url = 'https://sqs.ap-south-1.amazonaws.com/499607506705/MFA_AccountNumber'
 stock_url = ['https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=RELIANCE.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TATACHEM.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=ADANIENT.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=ONGC.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K','https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=TITAN.BSE&outputsize=full&apikey=BVL5MGAAMSINNX3K']
@@ -118,12 +119,47 @@ class LoginView(View):
             user = authenticate(request,username=username,password=password)
             if user:
                 login(request,user)
-                request.session['username'] = user.username
-                return HttpResponseRedirect(reverse("profile"))
+                return HttpResponseRedirect(reverse("mfaverification"))
             else:
                 context["error"] = "Enter Valid Credentials!!"
                 return render(request , "Login.html",context)
 
+class MfaVerificationView(View):
+    def get(self,request):
+        name = request.user
+        context = {}
+        if UserMfaSecret.objects.filter(username=name).exists():  
+            context["secret"] = UserMfaSecret.objects.filter(username=name).values_list('secret', flat=True)[0]
+            return render(request,"MfaVerification.html",context)
+        else:
+            context["secret"] = pyotp.random_base32()
+            return render(request,"MfaVerification.html",context)
+    
+    def post(self,request):
+        context = {}
+        name = request.user
+        if request.method == "POST":
+            secret = request.POST['secret']
+            otp = request.POST['otp']
+            otp = int(otp)
+            if UserMfaSecret.objects.filter(username=name).exists():
+                if pyotp.TOTP(secret).verify(otp):
+                    return HttpResponseRedirect(reverse("profile"))
+                else:
+                    context["error"] = "Wrong OTP, Try Again !!"
+                    return render(request,"MfaVerification.html",context)
+            else:
+                userMfa = UserMfaSecret(
+                    username=name,
+                    secret=secret,
+                )
+                userMfa.save()
+                if pyotp.TOTP(secret).verify(otp):
+                    return HttpResponseRedirect(reverse("profile"))
+                else:
+                    context["error"] = "Wrong OTP, Try Again !!"
+                    return render(request,"MfaVerification.html",context)
+            
 class LoginSuccessView(View):
     def get(self , request):
         name = request.user
@@ -133,6 +169,8 @@ class LoginSuccessView(View):
             context["date"] = today.strftime("%b %d %Y")
             if UserAccountBalance.objects.filter(username=name).exists():
                 context["accountbalance"] = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+                return render(request , "Profile.html",context)
+            else:
                 return render(request , "Profile.html",context)
         else:
             return render(request , "PersonalQuestions.html")

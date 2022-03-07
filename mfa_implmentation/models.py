@@ -13,3 +13,8 @@ class UserAccountBalance(models.Model):
     username = models.ForeignKey(User, on_delete=models.SET_NULL,null=True, related_name="userName")
     accountNumber = models.ForeignKey(UserInformation, on_delete=models.SET_NULL,null=True,related_name="accountnumber")
     balance = models.CharField(max_length=12)
+
+class UserMfaSecret(models.Model):
+    username = models.ForeignKey(User, on_delete=models.SET_NULL,null=True, related_name="user_name")
+    secret = models.CharField(max_length=50)
+
