@@ -74,17 +74,17 @@ function getCaptcha() {
   for (let i = 0; i < 6; i++) {
     let randomCharacter =
       allCharacters[Math.floor(Math.random() * allCharacters.length)];
-    captcha.innerText += ` ${randomCharacter}`; 
+    captcha.innerText += ` ${randomCharacter}`;
   }
 }
-getCaptcha(); 
+getCaptcha();
 reloadBtn.addEventListener("click", () => {
   removeContent();
   getCaptcha();
 });
 
 checkBtn.addEventListener("click", (e) => {
-  e.preventDefault(); 
+  e.preventDefault();
   statusTxt.style.display = "block";
   let inputVal = inputField.value.split("").join(" ");
   if (inputVal == captcha.innerText) {

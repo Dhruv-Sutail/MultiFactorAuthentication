@@ -32,12 +32,16 @@ FinTrans | {{user}}'s Stocks Investment {% endblock %}
               </tr>
             </thead>
             <tbody>
+              <form method="POST" {% url 'stocks' %}>
+                {% csrf_token %}
               <tr>
                 <td>{{stock.0}}</td>
                 <td>{{price.0}}</td>
-                <td><input onkeydown="return false" type="number" value="1" min="1"/></td>
-                <td><button class="td_button" role="button">Buy</button></td>
+                <input type="hidden" name="price" value={{price.0}} >
+                <td><input onkeydown="return false" type="number" name="quantity" value="1" min="1"/></td>
+                <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
+              </form>
               <tr>
                 <td>{{stock.1}}</td>
                 <td>{{price.1}}</td>

@@ -5,13 +5,15 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.hashers import make_password
-from .models import UserInformation,UserAccountBalance,UserMfaSecret
+from .models import UserInformation,UserAccountBalance,UserMfaSecret,User3MfaCodes
 import boto3
 import random
 import string
 import requests
 from datetime import date,timedelta
 import pyotp
+from django.conf import settings
+from django.core.mail import send_mail
 
 today = date.today()
 yesterday = today - timedelta(days = 3)
@@ -74,6 +76,13 @@ def callSQS(Secret,email):
 
 def GetSecret():
 	return ''.join(random.choices(string.ascii_uppercase + string.digits, k = 11))
+
+
+def BackupCodes():
+	return ''.join(random.choices(string.digits, k = 7))
+
+def OtpGenration():
+    return ''.join(random.choices(string.digits, k = 6))
 
 class HomeView(View):
     def get(self , request):
@@ -179,7 +188,6 @@ class LoginSuccessView(View):
         context = {}
         if request.method == "POST":
             user = request.user
-            print(user)
             Account = GetSecret()
             email = User.objects.filter(username=user).values_list('email', flat=True)[0]
             dish = request.POST['dish']
@@ -217,25 +225,51 @@ class AddMoneyView(View):
     
     def post(self,request):
         name = request.user
-        if UserAccountBalance.objects.filter(username=name).exists():
-            oldbalance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
-            balance = request.POST['amount']
-            newbalance = int(oldbalance) + int(balance)
-            print(newbalance)
-            totalbalance = UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
-            return HttpResponseRedirect(reverse("addmoney"))
-        else:
-            if request.method == "POST":
-                accountNumber = request.POST['accountnumber']
-                Accountnumber = UserInformation.objects.get(accountNumber=accountNumber)
-                balance = request.POST['amount']
-                userbalance = UserAccountBalance(
-                    username = name,
-                    accountNumber = Accountnumber,
-                    balance = balance,
-                )
-                userbalance.save()
-                return HttpResponseRedirect(reverse("addmoney"))
+        context = {}
+        amount = request.POST['amount']
+        context["amount"] = amount
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        email = User.objects.filter(username=name).values_list('email', flat=True)[0]
+        Genrated_Otp = OtpGenration()
+        User3MfaCodes.objects.filter(username=name).update(otp=Genrated_Otp)
+        subject = 'OTP Verification by Fintrans'
+        message = f'Hi {name},\nYour OTP is {Genrated_Otp}, Please Enter it Correctly and Complete Your Transaction for Rupees {amount}'
+        email_from = settings.EMAIL_HOST_USER
+        recipient_list = [email]
+        send_mail( subject, message, email_from, recipient_list )
+        return render(request,"otpVerfication.html",context)
+
+
+class OtpVerificationView(View):
+    def post(self,request):
+        context ={}
+        name = request.user
+        if request.method == "POST":
+            otp = request.POST['otp']
+            account = request.POST['accountNo']
+            amount = request.POST['amount']
+            userOtp = User3MfaCodes.objects.filter(username=name).values_list('otp', flat=True)[0]
+            if(otp==userOtp):
+                if UserAccountBalance.objects.filter(username=name).exists():
+                    oldbalance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+                    newbalance = int(oldbalance) + int(amount)
+                    UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
+                    return HttpResponseRedirect(reverse("addmoney"))
+                else:
+                    if request.method == "POST":
+                        accountNumber = request.POST['accountnumber']
+                        Accountnumber = UserInformation.objects.get(accountNumber=accountNumber)
+                        balance = request.POST['amount']
+                        userbalance = UserAccountBalance(
+                            username = name,
+                            accountNumber = Accountnumber,
+                            balance = balance,
+                        )
+                        userbalance.save()
+                        return HttpResponseRedirect(reverse("addmoney")) 
+            else:
+                context["Error"] = "Your Transaction Failed Please Enter Valid OTP for Tranaction!"
+                return render(request,"AddMoney.html",context)
 
 class StocksView(View):
     def get(self , request):
@@ -254,6 +288,44 @@ class StocksView(View):
         context["date"] = today.strftime("%b %d %Y")
         return render(request,"Stocks.html",context)
 
+    def post(self,request):
+        name = request.user
+        context = {}
+        quantity = request.POST['quantity']
+        amount = request.POST['price']
+        context["amount"] = float(amount)*int(quantity)
+        context["quantity"] = quantity
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        return render(request,"VerifyBackupCodes.html",context)
+
+class BackupCodeVerification(View):
+    def post(self,request):
+        name = request.user
+        context = {}
+        if request.method == "POST":
+            amount = request.POST['amount']
+            code1 = request.POST['code1']
+            code3 = request.POST['code3']
+            backup1 = User3MfaCodes.objects.filter(username=name).values_list('backupCode1', flat=True)[0]
+            backup3 = User3MfaCodes.objects.filter(username=name).values_list('backupCode3', flat=True)[0]
+            if(code1==backup1 and code3==backup3):
+                balance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+                if(amount<=balance):
+                    newbalance = int(balance)-float(amount)
+                    newbalance = int(newbalance)
+                    UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
+                    context["Success"] = "Your Transaction is Completed!!"
+                    return render(request,"VerifyBackupCodes.html",context)
+                else:
+                    context["Error"] = "Your Account Doesnt have Enough Money, So Your Trancation Failed!"
+                    return render(request,"VerifyBackupCodes.html",context)
+            else:
+                context["Error"] = "Your Transaction Failed Please Enter Valid BackupCodes for Tranaction!"
+                return render(request,"VerifyBackupCodes.html",context)
+
+            
+
+
 class CryptoCurrencyView(View):
     def get(self , request):
         context = {}
@@ -270,6 +342,33 @@ class CryptoCurrencyView(View):
         context["price"] = price
         context["date"] = today.strftime("%b %d %Y")
         return render(request,"CryptoCurrency.html",context)
+
+class BackupCodeView(View):
+    def get(self,request):
+        context = {}
+        name = request.user
+        context["accountnumber"] = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+        if User3MfaCodes.objects.filter(username=name).exists():
+            context["backup1"] = User3MfaCodes.objects.filter(username=name).values_list('backupCode1', flat=True)[0]
+            context["backup2"] = User3MfaCodes.objects.filter(username=name).values_list('backupCode2', flat=True)[0]
+            context["backup3"] = User3MfaCodes.objects.filter(username=name).values_list('backupCode3', flat=True)[0]
+            return render(request,"BackupCodes.html",context)
+        else:
+            backup1 = BackupCodes()
+            backup2 = BackupCodes()
+            backup3 = BackupCodes()
+            backupCode = User3MfaCodes(
+                username = name,
+                backupCode1 = backup1,
+                backupCode2 = backup2,
+                backupCode3 = backup3,
+                otp = 123456,
+            )
+            backupCode.save()
+            context["backup1"] = backup1
+            context["backup2"] = backup2
+            context["backup3"] = backup3
+            return render(request,"BackupCodes.html",context)
 
 class LogoutView(View):
     def post(self, request):

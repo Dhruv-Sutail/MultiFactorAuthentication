@@ -18,3 +18,9 @@ class UserMfaSecret(models.Model):
     username = models.ForeignKey(User, on_delete=models.SET_NULL,null=True, related_name="user_name")
     secret = models.CharField(max_length=50)
 
+class User3MfaCodes(models.Model):
+    username = models.ForeignKey(User, on_delete=models.SET_NULL,null=True, related_name="User_Name")
+    backupCode1 = models.CharField(max_length=7)
+    backupCode2 = models.CharField(max_length=7)
+    backupCode3 = models.CharField(max_length=7)
+    otp = models.CharField(max_length=6,null=True)
