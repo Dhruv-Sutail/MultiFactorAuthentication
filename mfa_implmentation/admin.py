@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserInformation,UserAccountBalance,UserMfaSecret,User3MfaCodes
+from .models import UserInformation,UserAccountBalance,UserMfaSecret,User3MfaCodes,UserLogs
 
 # Register your models here.
 class UserInformationAdmin(admin.ModelAdmin):
@@ -14,7 +14,11 @@ class UserMfaSecretAdmin(admin.ModelAdmin):
 class User3MfaCodesAdmin(admin.ModelAdmin):
     list_display = ("username","otp")
 
+class UserLogsAdmin(admin.ModelAdmin):
+    list_display = ("username","transactionAmount","transactionType")
+
 admin.site.register(UserInformation,UserInformationAdmin)
 admin.site.register(UserAccountBalance,UserAccountBalanceAdmin)
 admin.site.register(UserMfaSecret,UserMfaSecretAdmin)
 admin.site.register(User3MfaCodes,User3MfaCodesAdmin)
+admin.site.register(UserLogs,UserLogsAdmin)

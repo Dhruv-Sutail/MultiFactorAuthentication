@@ -39,11 +39,8 @@
                 Account Balance
               </div>
               <div class="h5 mb-0 font-weight-bold text-gray-800">
-                {% if accountbalance  %}
-                  {{accountbalance}} &#8377;
-                {% else %}
-                  No Balance
-                {% endif %}
+                {% if accountbalance %} {{accountbalance}} &#8377; {% else %} No
+                Balance {% endif %}
               </div>
             </div>
             <div class="col-auto">
@@ -99,6 +96,41 @@
             <canvas id="myAreaChart"></canvas>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="col-xl-8 col-lg-5">
+      <div class="card shadow mb-4">
+        <div
+          class="card-header py-3 d-flex flex-row align-items-center justify-content-between"
+        >
+          <h6 class="m-0 font-weight-bold text-primary">
+            User Logs (Transaction History)
+          </h6>
+        </div>
+        {% if not userlogs %}
+        <h5 class="d-flex justify-content-center">No Transaction Details</h5>
+        
+        {% endif %}
+        <table>
+         
+          <tr>
+            {% if userlogs %} 
+            <tr>
+              <th>User Name</th>
+              <th>Account Number</th>
+              <th>Transaction Type</th>
+              <th>Transaction Amount</th>
+            </tr>
+            {% for item in userlogs %}
+            <td>{{ item.username }}</td>
+            <td>{{ item.accountNumber }}</td>
+            <td>{{ item.transactionType }}</td>
+            <td>{{ item.transactionAmount }}</td>
+          </tr>
+          {% endfor %} 
+
+          {% endif %}
+        </table>
       </div>
     </div>
   </div>

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth.hashers import make_password
-from .models import UserInformation,UserAccountBalance,UserMfaSecret,User3MfaCodes
+from .models import UserInformation,UserAccountBalance,UserMfaSecret,User3MfaCodes,UserLogs
 import boto3
 import random
 import string
@@ -178,6 +178,7 @@ class LoginSuccessView(View):
             context["date"] = today.strftime("%b %d %Y")
             if UserAccountBalance.objects.filter(username=name).exists():
                 context["accountbalance"] = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
+                context["userlogs"] = UserLogs.objects.all()
                 return render(request , "Profile.html",context)
             else:
                 return render(request , "Profile.html",context)
@@ -254,10 +255,17 @@ class OtpVerificationView(View):
                     oldbalance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
                     newbalance = int(oldbalance) + int(amount)
                     UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
+                    userlog = UserLogs(
+                        username = name,
+                        accountNumber = account,
+                        transactionAmount = amount,
+                        transactionType = "AddMoney"
+                    )   
+                    userlog.save()
                     return HttpResponseRedirect(reverse("addmoney"))
                 else:
                     if request.method == "POST":
-                        accountNumber = request.POST['accountnumber']
+                        accountNumber = request.POST['accountNo']
                         Accountnumber = UserInformation.objects.get(accountNumber=accountNumber)
                         balance = request.POST['amount']
                         userbalance = UserAccountBalance(
@@ -266,6 +274,13 @@ class OtpVerificationView(View):
                             balance = balance,
                         )
                         userbalance.save()
+                        userlog = UserLogs(
+                            username = name,
+                            accountNumber = account,
+                            transactionAmount = balance,
+                            transactionType = "AddMoney"
+                        )   
+                        userlog.save()
                         return HttpResponseRedirect(reverse("addmoney")) 
             else:
                 context["Error"] = "Your Transaction Failed Please Enter Valid OTP for Tranaction!"
@@ -282,7 +297,7 @@ class StocksView(View):
             r = requests.get(stock_url[i])
             data = r.json()
             stock.append(data['Meta Data']['2. Symbol'])
-            price.append(data["Time Series (Daily)"][str(yesterday)]["4. close"])
+            price.append(data["Time Series (Daily)"]["2022-04-01"]["4. close"])
         context["stock"] = stock
         context["price"] = price   
         context["date"] = today.strftime("%b %d %Y")
@@ -310,10 +325,18 @@ class BackupCodeVerification(View):
             backup3 = User3MfaCodes.objects.filter(username=name).values_list('backupCode3', flat=True)[0]
             if(code1==backup1 and code3==backup3):
                 balance = UserAccountBalance.objects.filter(username=name).values_list('balance', flat=True)[0]
-                if(amount<=balance):
+                account = UserInformation.objects.filter(username=name).values_list('accountNumber', flat=True)[0]
+                if(float(amount)<=int(balance)):
                     newbalance = int(balance)-float(amount)
                     newbalance = int(newbalance)
                     UserAccountBalance.objects.filter(username=name).update(balance=newbalance)
+                    userlog = UserLogs(
+                        username = name,
+                        accountNumber = account,
+                        transactionAmount = amount,
+                        transactionType = "Backup Codes"
+                    )
+                    userlog.save()
                     context["Success"] = "Your Transaction is Completed!!"
                     return render(request,"VerifyBackupCodes.html",context)
                 else:

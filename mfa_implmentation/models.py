@@ -24,3 +24,10 @@ class User3MfaCodes(models.Model):
     backupCode2 = models.CharField(max_length=7)
     backupCode3 = models.CharField(max_length=7)
     otp = models.CharField(max_length=6,null=True)
+
+
+class UserLogs(models.Model):
+    username = models.CharField(max_length=100)
+    accountNumber = models.CharField(max_length=11)
+    transactionAmount = models.CharField(max_length=10)
+    transactionType = models.CharField(max_length=100)

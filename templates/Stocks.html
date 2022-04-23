@@ -42,30 +42,46 @@ FinTrans | {{user}}'s Stocks Investment {% endblock %}
                 <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
               </form>
+              <form method="POST" {% url 'stocks' %}>
+                {% csrf_token %}
               <tr>
                 <td>{{stock.1}}</td>
                 <td>{{price.1}}</td>
-                <td><input onkeydown="return false" type="number" value="1" min="1"/></td>
-                <td><button class="td_button" role="button">Buy</button></td>
+                <input type="hidden" name="price" value={{price.1}} >
+                <td><input onkeydown="return false" type="number" name="quantity" value="1" min="1"/></td>
+                <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
+              </form>
+              <form method="POST" {% url 'stocks' %}>
+                {% csrf_token %}
               <tr>
                 <td>{{stock.2}}</td>
                 <td>{{price.2}}</td>
-                <td><input onkeydown="return false" type="number" value="1" min="1"/></td>
-                <td><button class="td_button" role="button">Buy</button></td>
+                <input type="hidden" name="price" value={{price.2}} >
+                <td><input onkeydown="return false" type="number" name="quantity" value="1" min="1"/></td>
+                <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
+              </form>
+              <form method="POST" {% url 'stocks' %}>
+                {% csrf_token %}
               <tr>
                 <td>{{stock.3}}</td>
                 <td>{{price.3}}</td>
-                <td><input onkeydown="return false" type="number" value="1" min="1"/></td>
-                <td><button class="td_button" role="button">Buy</button></td>
+                <input type="hidden" name="price" value={{price.3}} >
+                <td><input onkeydown="return false" type="number" name="quantity" value="1" min="1"/></td>
+                <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
+              </form>
+              <form method="POST" {% url 'stocks' %}>
+                {% csrf_token %}
               <tr>
                 <td>{{stock.4}}</td>
                 <td>{{price.4}}</td>
-                <td><input onkeydown="return false" type="number" value="1" min="1"/></td>
-                <td><button class="td_button" role="button">Buy</button></td>
+                <input type="hidden" name="price" value={{price.4}} >
+                <td><input onkeydown="return false" type="number" name="quantity" value="1" min="1"/></td>
+                <td><button type="submit" class="td_button" role="button">Buy</button></td>
               </tr>
+              </form>
             </tbody>
           </table>
         </div>
