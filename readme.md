@@ -1,9 +1,5 @@
 # MFA
 
-## Steps to run project
-
-# Blog REST API
-
 [![Youtube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/channel/UCKspdO30Fea8ZCxwg-0svOg)
 [![Python](https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue)](https://www.youtube.com/channel/UCKspdO30Fea8ZCxwg-0svOg)
 [![Django](https://img.shields.io/badge/django-darkgreen?style=for-the-badge&logo=django&logoColor=white)](https://code.visualstudio.com/download)
